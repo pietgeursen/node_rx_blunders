@@ -1,33 +1,17 @@
 'use strict';
 
-var http = require('http');
+var net = require('net');
 var concat = require('concat-stream');
 var async = require('async');
+var strftime = require('strftime');
 
-var urls = process.argv.slice(2);
+var port = process.argv[2];
 
-var getUrl = function getUrl(url, cb) {
+if (port) {
 
-	http.get(url, function (response) {
-		response.setEncoding('utf8');
-		response.pipe(concat(function (data) {
-			cb(null, data);
-		}));
-	});
-};
-
-var funcArry = urls.map(function (url) {
-	return function (cb) {
-		getUrl(url, cb);
-	};
-});
-
-async.parallel(funcArry, function (err, results) {
-	if (err) {
-		console.error(err);
-	} else {
-		results.forEach(function (res) {
-			return console.log(res);
-		});
-	}
-});
+	var server = net.createServer(function (socket) {
+		var date = new Date();
+		var time = date.getTime();
+		socket.end(strftime('%F %R', new Date(time)) + '\n');
+	}).listen(port);
+}
