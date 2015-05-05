@@ -1,9 +1,11 @@
 var fs = require('fs')
+var p = require('path')
 
-var fileName = process.argv[2];
+var path = process.argv[2];
+var extension = process.argv[3];
 
-fs.readFile(fileName, function(err,data){
-	var num = data.toString().split('\n').length - 1;
-	console.log(num);	
+fs.readdir(path, function(err,data){
+	var files = data.filter(function(file){return p.extname(file) === extension})
+	console.log(files);	
 })
 
