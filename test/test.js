@@ -2,7 +2,7 @@
 
 var should = require('should');
 var http = require('http');
-var server = require('../program');
+var server = require('../server');
 var Rx = require('rx');
 
 describe('Uppercase Server', function () {
