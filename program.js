@@ -1,17 +1,17 @@
 'use strict';
 
-var net = require('net');
+var http = require('http');
 var concat = require('concat-stream');
 var async = require('async');
-var strftime = require('strftime');
+var fs = require('fs');
 
 var port = process.argv[2];
+var file = process.argv[3];
 
 if (port) {
 
-	var server = net.createServer(function (socket) {
-		var date = new Date();
-		var time = date.getTime();
-		socket.end(strftime('%F %R', new Date(time)) + '\n');
+	var server = http.createServer(function (req, res) {
+		var src = fs.createReadStream(file);
+		src.pipe(res);
 	}).listen(port);
 }
