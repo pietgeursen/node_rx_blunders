@@ -6,54 +6,66 @@ exports.start = (port) => {
 	let Rx = require('rx');
 	let url = require('url');
 
+	let getPathFromReq = (req) =>{
+		return url.parse(req.url,true).pathname
+	}
+
+	let getQueryFromReq = (req) => {
+		return url.parse(req.url,true).query		
+	}
+
+	let parsetime = time => {
+		return {
+			hour: time.getHours(),
+			minute: time.getMinutes(),
+			second: time.getSeconds()
+		}
+	}
+
+	let unixtime = time =>{
+		return {
+			unixtime: time.getTime()
+		}
+	}
+
+	let timeFromQuery = query =>{
+		return new Date(Date.parse(query.iso));
+	}
+
 	if(port){
 
-		server = http.createServer((req, res) => {			
+		server = http.createServer().listen(port)
 
-			let urlObj = url.parse(req.url, true);
-			let path = urlObj.pathname;
-			let query = urlObj.query;
+		let requests = Rx.Observable.fromEvent(server, 'request', (args) => {return {req:args[0], resp:args[1]}});
 
-			let parsetime = time => {
-				return {
-					hour: time.getHours(),
-					minute: time.getMinutes(),
-					second: time.getSeconds()
-				}
+
+		let requestsWithTimeResponses = requests.map(x =>{
+			
+			let query = getQueryFromReq(x.req);
+			let time = timeFromQuery(query);
+
+			let path = getPathFromReq(x.req)
+
+			if(path  === '/api/parsetime'){
+				x.jsonResponse = JSON.stringify(parsetime(time));
+			}else if(path  === '/api/unixtime'){
+				x.jsonResponse = JSON.stringify(unixtime(time));
 			}
+			return x;
+		})
 
-			let unixtime = time =>{
-				return {
-					unixtime: time.getTime()
-				}
-			}
+		
 
-
-			if(req.method === 'GET' && path === '/api/parsetime' ){
-				res.writeHead(200, { 'Content-Type': 'application/json' })
-
-				let time  = new Date(Date.parse(query.iso));
-				let jsonResponse = JSON.stringify(parsetime(time));
-
-				res.end(jsonResponse);
-
-			}	
-
-			else if(req.method === 'GET' && path === '/api/unixtime' ){
-				res.writeHead(200, { 'Content-Type': 'application/json' })
-				let time  = new Date(Date.parse(query.iso));
-				let jsonResponse = JSON.stringify(unixtime(time));
-
-				res.end(jsonResponse);
-
-			}
-
-			else{
-				res.writeHead(404);
-				res.end();
-
-			}		
-		}).listen(port)
+		let subscription = requestsWithTimeResponses.subscribe(
+		    x => {
+    			x.resp.end(x.jsonResponse);
+		    },
+		    err => {
+		        console.log('Error: ' + err);
+		    },
+		    () => {
+		        console.log('Completed');
+		    });
 	}
 }
 
@@ -63,21 +75,4 @@ exports.stop = () => {
 		server.close();
 }
 
-
-
-
-
-
-				// req.on('end' , () => {
-				// 	console.log('got req end')
-				// 	res.end();
-				// })
-				// let source = Rx.Observable.fromEvent(req, 'data');
-				// let upCased = source.map(s => {
-				// 	return s.toString().toUpperCase();
-				// });
-				// let subscription = upCased.subscribe(
-				// 	e => {
-				// 		res.write(e);
-				// 	}
-				// )			
+	
