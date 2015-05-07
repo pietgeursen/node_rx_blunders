@@ -4,54 +4,133 @@ var should = require('should');
 var http = require('http');
 var server = require('../server');
 var Rx = require('rx');
+var querystring = require('querystring');
 
-describe('Uppercase Server', function () {
-	var testString = 'piet';
+describe('JSON Server', function () {
+
 	var options = {
 		hostname: 'localhost',
 		port: 9000,
-		path: '/',
-		method: 'POST'
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json'
+		}
 	};
 
-	beforeEach(function () {
-		server.start();
+	var now = new Date(Date.now());
+	var iso = now.toISOString();
+
+	var query = querystring.stringify({
+		'iso': iso
 	});
 
-	it('should return any params sent to it in Uppercase', function (done) {
+	describe('/api/parsetime', function () {
 
-		var req = http.request(options, function (res) {
-			res.on('data', function (d) {
-				d.toString().should.be.exactly(testString.toUpperCase());
-				done();
-			});
+		beforeEach(function (done) {
+			options.path = '/api/parsetime';
+			server.start(9000);
+			done();
 		});
 
-		req.write(testString);
-		req.end();
-	});
+		it('should listen at api/parsetime', function (done) {
 
-	it('should process multiple chunks sent to it before closing the connection', function (done) {
-
-		var testResult = '';
-
-		var req = http.request(options, function (res) {
-			res.on('data', function (d) {
-				testResult += d.toString();
+			var req = http.request(options, function (res) {
+				res.on('end', function () {
+					done();
+				});
+				res.on('data', function (data) {});
 			});
-
-			res.on('end', function () {
-				testResult.should.be.exactly(testString.toUpperCase() + testString.toUpperCase());
-				done();
-			});
+			req.end();
 		});
 
-		req.write(testString);
-		req.write(testString);
-		req.end();
+		it('should return a json object with hour minute and second keys', function (done) {
+
+			var req = http.request(options, function (res) {
+
+				res.on('data', function (d) {
+					var time = JSON.parse(d.toString());
+					time.should.have.keys('hour', 'minute', 'second');
+					done();
+				});
+			});
+			req.end();
+		});
+
+		it('should parse iso formatted string and return the result as json', function (done) {
+
+			options.path += '?' + query;
+
+			var req = http.request(options, function (res) {
+
+				res.on('data', function (d) {
+					var time = JSON.parse(d.toString());
+					time.hour.should.be.equal(now.getHours());
+					time.minute.should.be.equal(now.getMinutes());
+					time.second.should.be.equal(now.getSeconds());
+
+					done();
+				});
+			});
+			req.end();
+		});
+
+		afterEach(function (done) {
+			server.stop();
+			done();
+		});
 	});
 
-	afterEach(function () {
-		server.stop();
+	describe('/api/unixtime', function (done) {
+
+		beforeEach(function (done) {
+			options.path = '/api/unixtime';
+			server.start(9000);
+			done();
+		});
+
+		it('should listen at api/unixtime', function (done) {
+
+			var req = http.request(options, function (res) {
+				res.on('end', function () {
+					done();
+				});
+				res.on('data', function (data) {});
+			});
+			req.end();
+		});
+
+		it('should return a json object with unixtime key', function (done) {
+
+			var req = http.request(options, function (res) {
+
+				res.on('data', function (d) {
+					var time = JSON.parse(d.toString());
+					time.should.have.keys('unixtime');
+					done();
+				});
+			});
+			req.end();
+		});
+
+		it('should parse iso formatted string and return the result as json', function (done) {
+
+			options.path += '?' + query;
+
+			var req = http.request(options, function (res) {
+
+				res.on('data', function (d) {
+					var time = JSON.parse(d.toString());
+					time.unixtime.should.be.equal(now.getTime());
+
+					done();
+				});
+			});
+			req.end();
+		});
+
+		afterEach(function (done) {
+			server.stop();
+			done();
+		});
 	});
 });
